@@ -1,9 +1,11 @@
 package main
 
 import (
+	"crypto/md5"
 	"crypto/rand"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -16,27 +18,39 @@ import (
 
 //DBase type used for storing BoltDB
 type DBase struct {
-	DB			*bolt.DB
-	Settings 	map[string]string
+	DB       *bolt.DB
+	Settings map[string]string
 }
-
 
 // Product struct used for storing product data
 type Product struct {
-	ID        string `json:"id,omitempty"`
-	Name      string `json:"name"`
-	IsBought  bool   `json:"isBought"`
+	ID       string `json:"id,omitempty"`
+	Name     string `json:"name"`
+	IsBought bool   `json:"isBought"`
+}
+
+type User struct {
+	Name string `json:"name"`
+	Pass string `json:"pass"`
+}
+
+type Token struct {
+	Name  string
+	Token string
 }
 
 var Products []Product
 var DB DBase
+var Auth DBase
+var Tokens []Token
+
 //var CurrBucket string
 
 // Logger method for anything
-func Logger (msg string, file string) {
+func Logger(msg string, file string) {
 	f, _ := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	log.SetOutput(f)
-	log.Println(msg+"\n")
+	log.Println(msg + "\n")
 	f.Close()
 	return
 }
@@ -60,9 +74,9 @@ func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 
 	pr.ID = GenerateGuid()
 
-	Logger("Input name: " + pr.Name, "log.txt")
+	Logger("Input name: "+pr.Name, "log.txt")
 	Products = append(Products, pr)
-	DB.DB.Update(func (tx *bolt.Tx) error {
+	DB.DB.Update(func(tx *bolt.Tx) error {
 		prods, _ := tx.CreateBucketIfNotExists([]byte("NewList"))
 		temp, err := json.Marshal(pr)
 		if err != nil {
@@ -91,36 +105,75 @@ func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 
 	DB.DB.View(func(tx *bolt.Tx) error {
-		b:= tx.Bucket([]byte("NewList"))
+		b := tx.Bucket([]byte("NewList"))
 		resp := b.Get([]byte(params["id"]))
 		log.Println(string(resp))
 		json.NewEncoder(w).Encode(string(resp))
 		return nil
-		})
+	})
 }
-
 
 // GetProductEndpoint used for deleting old product by ID
 func EditProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 
 	DB.DB.View(func(tx *bolt.Tx) error {
-		b:= tx.Bucket([]byte("NewList"))
+		b := tx.Bucket([]byte("NewList"))
 		resp := b.Get([]byte(params["id"]))
 		json.NewEncoder(w).Encode(string(resp))
 		return nil
 	})
 }
 
+// SignUpEndpoint used for IDK, like killing bytes?
+func SignUpEndpoint(w http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
 
+	var user User
 
+	user.Name = params["name"]
 
-func InitDb () DBase {
+	h := md5.New()
+	io.WriteString(h, params["pass"])
+
+	Auth.DB.Update(func(tx *bolt.Tx) error {
+		users, _ := tx.CreateBucketIfNotExists([]byte("Users"))
+		users.Put([]byte(user.Name), h.Sum(nil))
+		return nil
+	})
+
+	json.NewEncoder(w).Encode(user)
+}
+
+// SignInEndpoint used for achieving auth token by user
+func SignInEndpoint(w http.ResponseWriter, req *http.Request) {
+	params := mux.Vars(req)
+
+	var user User
+	user.Name = params["name"]
+
+	Auth.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("Users"))
+		resp := b.Get([]byte(params["id"]))
+		json.NewEncoder(w).Encode(string(resp))
+		return nil
+	})
+}
+
+func InitDb() DBase {
 	db, err := bolt.Open("list.db", 0600, nil)
-	if err !=nil {
+	if err != nil {
 		log.Println(err)
 	}
-	return DBase{DB:db}
+	return DBase{DB: db}
+}
+
+func InitLoginBase() DBase {
+	db, err := bolt.Open("users.db", 0600, nil)
+	if err != nil {
+		log.Println(err)
+	}
+	return DBase{DB: db}
 }
 
 func main() {
@@ -128,6 +181,7 @@ func main() {
 	fmt.Fprint(file, "Log started at: "+time.Now().String()+"\n")
 	defer file.Close()
 
+	Auth = InitLoginBase()
 	DB = InitDb()
 
 	router := mux.NewRouter()
@@ -136,7 +190,7 @@ func main() {
 	router.HandleFunc("/product/{id}", EditProductEndpoint).Methods("PUT")
 	router.HandleFunc("/product/{id}", DeleteProductEndpoint).Methods("DELETE")
 	router.HandleFunc("/product/{id}", GetProductEndpoint).Methods("GET")
+	router.HandleFunc("/signin", SignInEndpoint).Methods("POST")
+	router.HandleFunc("/signup", SignUpEndpoint).Methods("POST")
 	log.Fatal(http.ListenAndServe(":1881", router))
 }
-
-
