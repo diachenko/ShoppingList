@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/md5"
 	"crypto/rand"
 	"encoding/json"
@@ -127,37 +128,44 @@ func EditProductEndpoint(w http.ResponseWriter, req *http.Request) {
 
 // SignUpEndpoint used for IDK, like killing bytes?
 func SignUpEndpoint(w http.ResponseWriter, req *http.Request) {
-	params := mux.Vars(req)
-
 	var user User
-
-	user.Name = params["name"]
-
-	h := md5.New()
-	io.WriteString(h, params["pass"])
-
+	json.NewDecoder(req.Body).Decode(&user)
+	pass := md5.New()
+	io.WriteString(pass, user.Pass)
+	passHash := pass.Sum(nil)
 	Auth.DB.Update(func(tx *bolt.Tx) error {
 		users, _ := tx.CreateBucketIfNotExists([]byte("Users"))
-		users.Put([]byte(user.Name), h.Sum(nil))
+		users.Put([]byte(user.Name), passHash)
 		return nil
 	})
-
+	//TODO: errors.
 	json.NewEncoder(w).Encode(user)
 }
 
 // SignInEndpoint used for achieving auth token by user
 func SignInEndpoint(w http.ResponseWriter, req *http.Request) {
-	params := mux.Vars(req)
-
 	var user User
-	user.Name = params["name"]
-
+	json.NewDecoder(req.Body).Decode(&user)
+	pass := md5.New()
+	io.WriteString(pass, user.Pass)
+	passHash := pass.Sum(nil)
+	var tt Token
 	Auth.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("Users"))
-		resp := b.Get([]byte(params["id"]))
-		json.NewEncoder(w).Encode(string(resp))
+		resp := b.Get([]byte(user.Name))
+		if resp != nil {
+			if bytes.Equal(resp, passHash) {
+				t := make([]byte, 16)
+				rand.Read(t)
+				tt.Name = user.Name
+				tt.Token = fmt.Sprintf("%X", t[0:16])
+				Tokens = append(Tokens, tt)
+			}
+		}
 		return nil
 	})
+	//TODO: errors.
+	json.NewEncoder(w).Encode(tt)
 }
 
 func InitDb() DBase {
