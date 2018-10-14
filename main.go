@@ -40,6 +40,11 @@ type Token struct {
 	Token string
 }
 
+type Err struct {
+	Code int
+	Text string
+}
+
 var Products []Product
 var DB DBase
 var Auth DBase
@@ -58,6 +63,8 @@ func Logger(msg string, file string) {
 
 // GetProductListEndpoint used for retriving all products in list
 func GetProductListEndpoint(w http.ResponseWriter, req *http.Request) {
+	//	auth := req.Header.Get("auth")
+	//	fmt.Println(auth)
 	json.NewEncoder(w).Encode(Products)
 
 }
@@ -129,27 +136,45 @@ func EditProductEndpoint(w http.ResponseWriter, req *http.Request) {
 // SignUpEndpoint used for IDK, like killing bytes?
 func SignUpEndpoint(w http.ResponseWriter, req *http.Request) {
 	var user User
+	var err Err
 	json.NewDecoder(req.Body).Decode(&user)
 	pass := md5.New()
 	io.WriteString(pass, user.Pass)
 	passHash := pass.Sum(nil)
+	//is there user with same name?
+	Auth.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("Users"))
+		resp := b.Get([]byte(user.Name))
+		if resp != nil {
+			err.Code = 500
+			err.Text = "User already registered"
+			str, _ := json.Marshal(err)
+			http.Error(w, string(str), 500)
+		}
+		return nil
+	})
+	if err.Text != "" {
+		return
+	}
 	Auth.DB.Update(func(tx *bolt.Tx) error {
 		users, _ := tx.CreateBucketIfNotExists([]byte("Users"))
 		users.Put([]byte(user.Name), passHash)
 		return nil
 	})
-	//TODO: errors.
 	json.NewEncoder(w).Encode(user)
 }
 
 // SignInEndpoint used for achieving auth token by user
 func SignInEndpoint(w http.ResponseWriter, req *http.Request) {
 	var user User
+	var err Err
+	var tt Token
+
 	json.NewDecoder(req.Body).Decode(&user)
 	pass := md5.New()
 	io.WriteString(pass, user.Pass)
 	passHash := pass.Sum(nil)
-	var tt Token
+
 	Auth.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("Users"))
 		resp := b.Get([]byte(user.Name))
@@ -160,12 +185,24 @@ func SignInEndpoint(w http.ResponseWriter, req *http.Request) {
 				tt.Name = user.Name
 				tt.Token = fmt.Sprintf("%X", t[0:16])
 				Tokens = append(Tokens, tt)
+			} else {
+				err.Code = 500
+				err.Text = "Wrong password"
+				str, _ := json.Marshal(err)
+				http.Error(w, string(str), 500)
+				return nil
 			}
+		} else {
+			err.Code = 500
+			err.Text = "User not found"
+			str, _ := json.Marshal(err)
+			http.Error(w, string(str), 500)
 		}
 		return nil
 	})
-	//TODO: errors.
-	json.NewEncoder(w).Encode(tt)
+	if err.Text == "" {
+		json.NewEncoder(w).Encode(tt)
+	}
 }
 
 func InitDb() DBase {
