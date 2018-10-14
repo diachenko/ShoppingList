@@ -50,9 +50,8 @@ type Err struct {
 var products []Product
 var dB DBase
 var auth DBase
-var tokens []Token
 
-var tokkens map[string]string
+var tokens map[string]string
 
 //var CurrBucket string
 
@@ -68,10 +67,10 @@ func Logger(msg string, file string) {
 // GetProductListEndpoint used for retriving all products in list
 func GetProductListEndpoint(w http.ResponseWriter, req *http.Request) {
 	auth := req.Header.Get("auth")
-	fmt.Println(auth)
+	bucketName := tokens[auth]
 	var prods []Product
 	dB.DB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("NewList"))
+		b := tx.Bucket([]byte(bucketName))
 		b.ForEach(func(k, v []byte) error {
 			var p Product
 			json.Unmarshal(v, p)
@@ -93,6 +92,7 @@ func GenerateGUID() string {
 // AddProductEndpoint used for creating new product in db
 func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	var pr Product
+	//todo: add auth
 	json.NewDecoder(req.Body).Decode(&pr)
 
 	pr.ID = GenerateGUID()
@@ -115,6 +115,7 @@ func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 // DeleteProductEndpoint used for deleting old product by ID
 func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
+	//todo: add auth
 	for index, item := range products {
 		if item.ID == params["id"] {
 			products = append(products[:index], products[index+1:]...)
@@ -123,9 +124,10 @@ func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-// GetProductEndpoint used for deleting old product by ID
+// GetProductEndpoint get certain product by ID
 func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
+	//TODO add auth
 	dB.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("NewList"))
 		resp := b.Get([]byte(params["id"]))
@@ -134,11 +136,12 @@ func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
-// EditProductEndpoint used for deleting old product by ID
+// EditProductEndpoint change product by ID. TODO:make it only "bought/unbought"
 func EditProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	auth := req.Header.Get("auth")
 	fmt.Println(auth)
+	//TODO:add auth
 	dB.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("NewList"))
 		resp := b.Get([]byte(params["id"]))
@@ -178,7 +181,7 @@ func SignUpEndpoint(w http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(w).Encode(user)
 }
 
-// SignInEndpoint used for achieving auth token by user
+// SignInEndpoint used for achieving auth token by user TODO: add DDOS guards.
 func SignInEndpoint(w http.ResponseWriter, req *http.Request) {
 	var user User
 	var err Err
@@ -198,7 +201,7 @@ func SignInEndpoint(w http.ResponseWriter, req *http.Request) {
 				rand.Read(t)
 				tt.Name = user.Name
 				tt.Token = fmt.Sprintf("%X", t[0:16])
-				tokens = append(tokens, tt)
+				tokens[tt.Token] = user.Name
 			} else {
 				err.Code = 500
 				err.Text = "Wrong password"
@@ -242,8 +245,7 @@ func main() {
 	//	file, _ := os.Create("log.txt")
 	//	fmt.Fprint(file, "Log started at: "+time.Now().String()+"\n")
 	//	defer file.Close()
-	tokkens = make(map[string]string)
-
+	tokens = make(map[string]string)
 	auth = InitLoginBase()
 	dB = InitDb()
 
