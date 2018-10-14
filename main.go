@@ -52,6 +52,8 @@ var dB DBase
 var auth DBase
 var tokens []Token
 
+var tokkens map[string]string
+
 //var CurrBucket string
 
 // Logger method for anything
@@ -65,10 +67,20 @@ func Logger(msg string, file string) {
 
 // GetProductListEndpoint used for retriving all products in list
 func GetProductListEndpoint(w http.ResponseWriter, req *http.Request) {
-	//	auth := req.Header.Get("auth")
-	//	fmt.Println(auth)
-	json.NewEncoder(w).Encode(products)
-
+	auth := req.Header.Get("auth")
+	fmt.Println(auth)
+	var prods []Product
+	dB.DB.View(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte("NewList"))
+		b.ForEach(func(k, v []byte) error {
+			var p Product
+			json.Unmarshal(v, p)
+			prods = append(prods, p)
+			return nil
+		})
+		return nil
+	})
+	json.NewEncoder(w).Encode(prods)
 }
 
 // GenerateGUID generates UUID/GUID
@@ -114,18 +126,9 @@ func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
 // GetProductEndpoint used for deleting old product by ID
 func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	//var prods []Product
 	dB.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("NewList"))
 		resp := b.Get([]byte(params["id"]))
-		//b./
-		b.ForEach(func(k, v []byte) error {
-			var p Product
-			json.Unmarshal(v, p)
-			//prods.
-			return nil
-		})
-		log.Println(string(resp))
 		json.NewEncoder(w).Encode(string(resp))
 		return nil
 	})
@@ -239,6 +242,7 @@ func main() {
 	//	file, _ := os.Create("log.txt")
 	//	fmt.Fprint(file, "Log started at: "+time.Now().String()+"\n")
 	//	defer file.Close()
+	tokkens = make(map[string]string)
 
 	auth = InitLoginBase()
 	dB = InitDb()
