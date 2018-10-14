@@ -10,7 +10,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/gorilla/mux"
 
@@ -111,10 +110,17 @@ func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
 // GetProductEndpoint used for deleting old product by ID
 func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-
+	//var prods []Product
 	DB.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("NewList"))
 		resp := b.Get([]byte(params["id"]))
+		//b./
+		b.ForEach(func(k, v []byte) error {
+			var p Product
+			json.Unmarshal(v, p)
+			//prods.
+			return nil
+		})
 		log.Println(string(resp))
 		json.NewEncoder(w).Encode(string(resp))
 		return nil
@@ -124,7 +130,8 @@ func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 // GetProductEndpoint used for deleting old product by ID
 func EditProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-
+	auth := req.Header.Get("auth")
+	fmt.Println(auth)
 	DB.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("NewList"))
 		resp := b.Get([]byte(params["id"]))
@@ -222,9 +229,10 @@ func InitLoginBase() DBase {
 }
 
 func main() {
-	file, _ := os.Create("log.txt")
-	fmt.Fprint(file, "Log started at: "+time.Now().String()+"\n")
-	defer file.Close()
+	//  Not sure why do i need these logs
+	//	file, _ := os.Create("log.txt")
+	//	fmt.Fprint(file, "Log started at: "+time.Now().String()+"\n")
+	//	defer file.Close()
 
 	Auth = InitLoginBase()
 	DB = InitDb()
