@@ -29,25 +29,28 @@ type Product struct {
 	IsBought bool   `json:"isBought"`
 }
 
+//User - name/pass - used for login/signup
 type User struct {
 	Name string `json:"name"`
 	Pass string `json:"pass"`
 }
 
+//Token used for tokens array. TODO: move Users and tokens to mongoDB
 type Token struct {
 	Name  string
 	Token string
 }
 
+//Err used for error handling in http requests
 type Err struct {
 	Code int
 	Text string
 }
 
-var Products []Product
-var DB DBase
-var Auth DBase
-var Tokens []Token
+var products []Product
+var dB DBase
+var auth DBase
+var tokens []Token
 
 //var CurrBucket string
 
@@ -64,26 +67,27 @@ func Logger(msg string, file string) {
 func GetProductListEndpoint(w http.ResponseWriter, req *http.Request) {
 	//	auth := req.Header.Get("auth")
 	//	fmt.Println(auth)
-	json.NewEncoder(w).Encode(Products)
+	json.NewEncoder(w).Encode(products)
 
 }
 
-func GenerateGuid() string {
+// GenerateGUID generates UUID/GUID
+func GenerateGUID() string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	return fmt.Sprintf("%X-%X-%X-%X-%X", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
-// AddProductEndpoint used for creating new equation in memory and getting result
+// AddProductEndpoint used for creating new product in db
 func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	var pr Product
 	json.NewDecoder(req.Body).Decode(&pr)
 
-	pr.ID = GenerateGuid()
+	pr.ID = GenerateGUID()
 
 	Logger("Input name: "+pr.Name, "log.txt")
-	Products = append(Products, pr)
-	DB.DB.Update(func(tx *bolt.Tx) error {
+	products = append(products, pr)
+	dB.DB.Update(func(tx *bolt.Tx) error {
 		prods, _ := tx.CreateBucketIfNotExists([]byte("NewList"))
 		temp, err := json.Marshal(pr)
 		if err != nil {
@@ -99,9 +103,9 @@ func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 // DeleteProductEndpoint used for deleting old product by ID
 func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	for index, item := range Products {
+	for index, item := range products {
 		if item.ID == params["id"] {
-			Products = append(Products[:index], Products[index+1:]...)
+			products = append(products[:index], products[index+1:]...)
 			break
 		}
 	}
@@ -111,7 +115,7 @@ func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
 func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	//var prods []Product
-	DB.DB.View(func(tx *bolt.Tx) error {
+	dB.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("NewList"))
 		resp := b.Get([]byte(params["id"]))
 		//b./
@@ -127,12 +131,12 @@ func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
-// GetProductEndpoint used for deleting old product by ID
+// EditProductEndpoint used for deleting old product by ID
 func EditProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	auth := req.Header.Get("auth")
 	fmt.Println(auth)
-	DB.DB.View(func(tx *bolt.Tx) error {
+	dB.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("NewList"))
 		resp := b.Get([]byte(params["id"]))
 		json.NewEncoder(w).Encode(string(resp))
@@ -149,7 +153,7 @@ func SignUpEndpoint(w http.ResponseWriter, req *http.Request) {
 	io.WriteString(pass, user.Pass)
 	passHash := pass.Sum(nil)
 	//is there user with same name?
-	Auth.DB.View(func(tx *bolt.Tx) error {
+	auth.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("Users"))
 		resp := b.Get([]byte(user.Name))
 		if resp != nil {
@@ -163,7 +167,7 @@ func SignUpEndpoint(w http.ResponseWriter, req *http.Request) {
 	if err.Text != "" {
 		return
 	}
-	Auth.DB.Update(func(tx *bolt.Tx) error {
+	auth.DB.Update(func(tx *bolt.Tx) error {
 		users, _ := tx.CreateBucketIfNotExists([]byte("Users"))
 		users.Put([]byte(user.Name), passHash)
 		return nil
@@ -182,7 +186,7 @@ func SignInEndpoint(w http.ResponseWriter, req *http.Request) {
 	io.WriteString(pass, user.Pass)
 	passHash := pass.Sum(nil)
 
-	Auth.DB.View(func(tx *bolt.Tx) error {
+	auth.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("Users"))
 		resp := b.Get([]byte(user.Name))
 		if resp != nil {
@@ -191,7 +195,7 @@ func SignInEndpoint(w http.ResponseWriter, req *http.Request) {
 				rand.Read(t)
 				tt.Name = user.Name
 				tt.Token = fmt.Sprintf("%X", t[0:16])
-				Tokens = append(Tokens, tt)
+				tokens = append(tokens, tt)
 			} else {
 				err.Code = 500
 				err.Text = "Wrong password"
@@ -212,6 +216,7 @@ func SignInEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// InitDb initialises shoppinglist db (boltDb)
 func InitDb() DBase {
 	db, err := bolt.Open("list.db", 0600, nil)
 	if err != nil {
@@ -220,6 +225,7 @@ func InitDb() DBase {
 	return DBase{DB: db}
 }
 
+//InitLoginBase Initialises users DB. TODO - move to mongo
 func InitLoginBase() DBase {
 	db, err := bolt.Open("users.db", 0600, nil)
 	if err != nil {
@@ -234,8 +240,8 @@ func main() {
 	//	fmt.Fprint(file, "Log started at: "+time.Now().String()+"\n")
 	//	defer file.Close()
 
-	Auth = InitLoginBase()
-	DB = InitDb()
+	auth = InitLoginBase()
+	dB = InitDb()
 
 	router := mux.NewRouter()
 	router.HandleFunc("/productList", GetProductListEndpoint).Methods("GET")
