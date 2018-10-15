@@ -66,10 +66,10 @@ func Logger(msg string, file string) {
 
 // GetProductListEndpoint used for retriving all products in list
 func GetProductListEndpoint(w http.ResponseWriter, req *http.Request) {
-	auth := req.Header.Get("auth")
+	auth := req.Header.Get("auth") //TODO: add "unauthorized" exception
 	bucketName := tokens[auth]
 	var prods []Product
-	dB.DB.View(func(tx *bolt.Tx) error {
+	dB.DB.View(func(tx *bolt.Tx) error { //TODO: move to separate function
 		b := tx.Bucket([]byte(bucketName))
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
@@ -91,12 +91,12 @@ func GenerateGUID() string {
 
 // AddProductEndpoint used for creating new product in db
 func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	var pr Product
+	var pr Product // add "unauthorized" exception
 	json.NewDecoder(req.Body).Decode(&pr)
 	auth := req.Header.Get("auth")
 	bucketName := tokens[auth]
 	pr.ID = GenerateGUID()
-	dB.DB.Update(func(tx *bolt.Tx) error {
+	dB.DB.Update(func(tx *bolt.Tx) error { //TODO: move to separate function
 		prods, _ := tx.CreateBucketIfNotExists([]byte(bucketName))
 		temp, err := json.Marshal(pr)
 		if err != nil {
@@ -125,10 +125,10 @@ func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
 
 // GetProductEndpoint get certain product by ID
 func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	params := mux.Vars(req)
+	params := mux.Vars(req) //TODO add "unauthorized" exception
 	auth := req.Header.Get("auth")
 	bucketName := tokens[auth]
-	dB.DB.View(func(tx *bolt.Tx) error {
+	dB.DB.View(func(tx *bolt.Tx) error { //TODO: move to separate function
 		b, _ := tx.CreateBucketIfNotExists([]byte(bucketName))
 		resp := b.Get([]byte(params["id"]))
 		json.NewEncoder(w).Encode(string(resp))
@@ -138,7 +138,7 @@ func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 
 // EditProductEndpoint change product by ID. TODO:make it only "bought/unbought"
 func EditProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	params := mux.Vars(req)
+	params := mux.Vars(req) //TODO: add "unathorized" exception
 	auth := req.Header.Get("auth")
 	bucketName := tokens[auth]
 	dB.DB.View(func(tx *bolt.Tx) error {
