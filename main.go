@@ -71,12 +71,12 @@ func GetProductListEndpoint(w http.ResponseWriter, req *http.Request) {
 	var prods []Product
 	dB.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucketName))
-		b.ForEach(func(k, v []byte) error {
+		c := b.Cursor()
+		for k, v := c.First(); k != nil; k, v = c.Next() {
 			var p Product
-			json.Unmarshal(v, p)
+			json.Unmarshal(v, &p)
 			prods = append(prods, p)
-			return nil
-		})
+		}
 		return nil
 	})
 	json.NewEncoder(w).Encode(prods)
@@ -92,15 +92,12 @@ func GenerateGUID() string {
 // AddProductEndpoint used for creating new product in db
 func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	var pr Product
-	//todo: add auth
 	json.NewDecoder(req.Body).Decode(&pr)
-
+	auth := req.Header.Get("auth")
+	bucketName := tokens[auth]
 	pr.ID = GenerateGUID()
-
-	Logger("Input name: "+pr.Name, "log.txt")
-	products = append(products, pr)
 	dB.DB.Update(func(tx *bolt.Tx) error {
-		prods, _ := tx.CreateBucketIfNotExists([]byte("NewList"))
+		prods, _ := tx.CreateBucketIfNotExists([]byte(bucketName))
 		temp, err := json.Marshal(pr)
 		if err != nil {
 			log.Println(err)
@@ -108,14 +105,16 @@ func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 		prods.Put([]byte(pr.ID), temp)
 		return nil
 	})
-
 	json.NewEncoder(w).Encode(pr)
 }
 
 // DeleteProductEndpoint used for deleting old product by ID
 func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	//todo: add auth
+	//	auth := req.Header.Get("auth")
+	//	bucketName := tokens[auth]
+
+	//todo: add delete from db
 	for index, item := range products {
 		if item.ID == params["id"] {
 			products = append(products[:index], products[index+1:]...)
@@ -127,9 +126,10 @@ func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
 // GetProductEndpoint get certain product by ID
 func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
-	//TODO add auth
+	auth := req.Header.Get("auth")
+	bucketName := tokens[auth]
 	dB.DB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("NewList"))
+		b, _ := tx.CreateBucketIfNotExists([]byte(bucketName))
 		resp := b.Get([]byte(params["id"]))
 		json.NewEncoder(w).Encode(string(resp))
 		return nil
@@ -140,10 +140,9 @@ func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 func EditProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req)
 	auth := req.Header.Get("auth")
-	fmt.Println(auth)
-	//TODO:add auth
+	bucketName := tokens[auth]
 	dB.DB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("NewList"))
+		b := tx.Bucket([]byte(bucketName))
 		resp := b.Get([]byte(params["id"]))
 		json.NewEncoder(w).Encode(string(resp))
 		return nil
@@ -160,8 +159,8 @@ func SignUpEndpoint(w http.ResponseWriter, req *http.Request) {
 	passHash := pass.Sum(nil)
 	//is there user with same name?
 	auth.DB.View(func(tx *bolt.Tx) error {
-		b := tx.Bucket([]byte("Users"))
-		resp := b.Get([]byte(user.Name))
+		bb := tx.Bucket([]byte("Users"))
+		resp := bb.Get([]byte(user.Name))
 		if resp != nil {
 			err.Code = 500
 			err.Text = "User already registered"
