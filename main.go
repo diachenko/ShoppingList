@@ -13,7 +13,7 @@ import (
 
 	"github.com/gorilla/mux"
 
-	bolt "github.com/coreos/bbolt"
+	bolt "github.com/boltdb/bolt"
 )
 
 //DBase type used for storing BoltDB
@@ -95,6 +95,10 @@ func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	json.NewDecoder(req.Body).Decode(&pr)
 	auth := req.Header.Get("auth")
 	bucketName := tokens[auth]
+	if bucketName == "" {
+		http.Error(w, "User not authorized", 403)
+		return
+	}
 	pr.ID = GenerateGUID()
 	dB.DB.Update(func(tx *bolt.Tx) error { //TODO: move to separate function
 		prods, _ := tx.CreateBucketIfNotExists([]byte(bucketName))
@@ -236,6 +240,10 @@ func InitLoginBase() DBase {
 	if err != nil {
 		log.Println(err)
 	}
+	db.Update(func(tx *bolt.Tx) error {
+		tx.CreateBucketIfNotExists([]byte("Users"))
+		return nil
+	})
 	return DBase{DB: db}
 }
 
