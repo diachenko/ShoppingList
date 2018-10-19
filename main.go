@@ -114,17 +114,14 @@ func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 
 // DeleteProductEndpoint used for deleting old product by ID
 func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	params := mux.Vars(req)
-	//	auth := req.Header.Get("auth")
-	//	bucketName := tokens[auth]
-
-	//todo: add delete from db
-	for index, item := range products {
-		if item.ID == params["id"] {
-			products = append(products[:index], products[index+1:]...)
-			break
-		}
-	}
+	params := mux.Vars(req) //TODO: add "unathorized" exception
+	auth := req.Header.Get("auth")
+	bucketName := tokens[auth]
+	dB.DB.Update(func(tx *bolt.Tx) error {
+		b := tx.Bucket([]byte(bucketName))
+		b.Delete([]byte(params["id"]))
+		return nil
+	})
 }
 
 // GetProductEndpoint get certain product by ID
@@ -140,15 +137,19 @@ func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	})
 }
 
-// EditProductEndpoint change product by ID. TODO:make it only "bought/unbought"
-func EditProductEndpoint(w http.ResponseWriter, req *http.Request) {
+// ToggleProductEndpoint change product status by ID.
+func ToggleProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req) //TODO: add "unathorized" exception
 	auth := req.Header.Get("auth")
+	var p Product
 	bucketName := tokens[auth]
-	dB.DB.View(func(tx *bolt.Tx) error {
+	dB.DB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucketName))
-		resp := b.Get([]byte(params["id"]))
-		json.NewEncoder(w).Encode(string(resp))
+		json.Unmarshal(b.Get([]byte(params["id"])), p)
+		p.IsBought = !p.IsBought
+		tmp, _ := json.Marshal(p)
+		b.Put([]byte(params["id"]), tmp)
+		json.NewEncoder(w).Encode(p)
 		return nil
 	})
 }
@@ -259,7 +260,7 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/productList", GetProductListEndpoint).Methods("GET")
 	router.HandleFunc("/product", AddProductEndpoint).Methods("POST")
-	router.HandleFunc("/product/{id}", EditProductEndpoint).Methods("PUT")
+	router.HandleFunc("/product/{id}", ToggleProductEndpoint).Methods("PUT")
 	router.HandleFunc("/product/{id}", DeleteProductEndpoint).Methods("DELETE")
 	router.HandleFunc("/product/{id}", GetProductEndpoint).Methods("GET")
 	router.HandleFunc("/signin", SignInEndpoint).Methods("POST")
