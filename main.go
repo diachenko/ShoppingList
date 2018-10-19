@@ -145,7 +145,7 @@ func ToggleProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	bucketName := tokens[auth]
 	dB.DB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucketName))
-		json.Unmarshal(b.Get([]byte(params["id"])), p)
+		json.Unmarshal(b.Get([]byte(params["id"])), &p)
 		p.IsBought = !p.IsBought
 		tmp, _ := json.Marshal(p)
 		b.Put([]byte(params["id"]), tmp)
