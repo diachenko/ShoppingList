@@ -11,7 +11,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/gorilla/mux"
+	"github.com/gorilla/mux" 
 
 	bolt "github.com/boltdb/bolt"
 )
@@ -91,7 +91,7 @@ func GenerateGUID() string {
 
 // AddProductEndpoint used for creating new product in db
 func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	var pr Product // add "unauthorized" exception
+	var pr Product // TODO: add "unauthorized" exception
 	json.NewDecoder(req.Body).Decode(&pr)
 	auth := req.Header.Get("auth")
 	bucketName := tokens[auth]
@@ -141,6 +141,14 @@ func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 func ToggleProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	params := mux.Vars(req) //TODO: add "unathorized" exception
 	auth := req.Header.Get("auth")
+	if auth == "" {
+		var err Err
+		err.Code = 401
+		err.Text = "Unauthorized"
+		str, _ := json.Marshal(err)
+		http.Error(w, string(str), 401)
+		return
+	}
 	var p Product
 	bucketName := tokens[auth]
 	dB.DB.Update(func(tx *bolt.Tx) error {
@@ -249,10 +257,6 @@ func InitLoginBase() DBase {
 }
 
 func main() {
-	//  Not sure why do i need these logs
-	//	file, _ := os.Create("log.txt")
-	//	fmt.Fprint(file, "Log started at: "+time.Now().String()+"\n")
-	//	defer file.Close()
 	tokens = make(map[string]string)
 	auth = InitLoginBase()
 	dB = InitDb()
