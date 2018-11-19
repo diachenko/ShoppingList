@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/mux" 
 
@@ -27,6 +28,7 @@ type Product struct {
 	ID       string `json:"id,omitempty"`
 	Name     string `json:"name"`
 	IsBought bool   `json:"isBought"`
+	DateAdded time.Time `json:"dateAdded"`
 }
 
 //User - name/pass - used for login/signup
@@ -66,7 +68,15 @@ func Logger(msg string, file string) {
 
 // GetProductListEndpoint used for retriving all products in list
 func GetProductListEndpoint(w http.ResponseWriter, req *http.Request) {
-	auth := req.Header.Get("auth") //TODO: add "unauthorized" exception
+	auth := req.Header.Get("auth")
+	if auth == "" {
+		var err Err
+		err.Code = 401
+		err.Text = "Unauthorized"
+		str, _ := json.Marshal(err)
+		http.Error(w, string(str), 401)
+		return
+	}
 	bucketName := tokens[auth]
 	var prods []Product
 	dB.DB.View(func(tx *bolt.Tx) error { //TODO: move to separate function
@@ -91,15 +101,24 @@ func GenerateGUID() string {
 
 // AddProductEndpoint used for creating new product in db
 func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	var pr Product // TODO: add "unauthorized" exception
-	json.NewDecoder(req.Body).Decode(&pr)
+	var pr Product 
 	auth := req.Header.Get("auth")
+	if auth == "" {
+		var err Err
+		err.Code = 401
+		err.Text = "Unauthorized"
+		str, _ := json.Marshal(err)
+		http.Error(w, string(str), 401)
+		return
+	}
+	json.NewDecoder(req.Body).Decode(&pr)
 	bucketName := tokens[auth]
 	if bucketName == "" {
-		http.Error(w, "User not authorized", 403)
+		http.Error(w, "User not authorized", 401)
 		return
 	}
 	pr.ID = GenerateGUID()
+	pr.DateAdded = time.Now()
 	dB.DB.Update(func(tx *bolt.Tx) error { //TODO: move to separate function
 		prods, _ := tx.CreateBucketIfNotExists([]byte(bucketName))
 		temp, err := json.Marshal(pr)
@@ -114,8 +133,16 @@ func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 
 // DeleteProductEndpoint used for deleting old product by ID
 func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	params := mux.Vars(req) //TODO: add "unathorized" exception
+	params := mux.Vars(req) 
 	auth := req.Header.Get("auth")
+	if auth == "" {
+		var err Err
+		err.Code = 401
+		err.Text = "Unauthorized"
+		str, _ := json.Marshal(err)
+		http.Error(w, string(str), 401)
+		return
+	}
 	bucketName := tokens[auth]
 	dB.DB.Update(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucketName))
@@ -126,8 +153,16 @@ func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
 
 // GetProductEndpoint get certain product by ID
 func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	params := mux.Vars(req) //TODO add "unauthorized" exception
+	params := mux.Vars(req) 
 	auth := req.Header.Get("auth")
+	if auth == "" {
+		var err Err
+		err.Code = 401
+		err.Text = "Unauthorized"
+		str, _ := json.Marshal(err)
+		http.Error(w, string(str), 401)
+		return
+	}
 	bucketName := tokens[auth]
 	dB.DB.View(func(tx *bolt.Tx) error { //TODO: move to separate function
 		b, _ := tx.CreateBucketIfNotExists([]byte(bucketName))
@@ -139,7 +174,7 @@ func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 
 // ToggleProductEndpoint change product status by ID.
 func ToggleProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	params := mux.Vars(req) //TODO: add "unathorized" exception
+	params := mux.Vars(req) 
 	auth := req.Header.Get("auth")
 	if auth == "" {
 		var err Err
