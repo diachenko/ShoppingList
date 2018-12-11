@@ -7,38 +7,38 @@ BE Side of the simple Shopping List app.
 > All calls except **signin** and **signup** should contain "auth" parameter in header. 
 > "auth" value received in **signin** call response
 ### **POST** Sign in metod call example: 
+>POST [YOUR_SERVER_ADDRESS:1881/signin]
 ```JSON
-[YOUR_SERVER_ADDRESS:1881/signin]
 Request:
 {
-    name: "AwesomeUser",
-    pass: "AwesomePass"
+    "name": "AwesomeUser",
+    "pass": "AwesomePass"
 }
 Response: 200 OK
 {
-    Name: "AwesomeUser",
-    Token: "F2D052C796A264A666EE76B5350EB7BE"
+    "Name": "AwesomeUser",
+    "Token": "F2D052C796A264A666EE76B5350EB7BE"
 }
 ```
 ### **POST** Sign up metod call example:
+>POST [YOUR_SERVER_ADDRESS:1881/signup]
 ```JSON
-[YOUR_SERVER_ADDRESS:1881/signup]
 Request:
 {
-    name: "AwesomeUser",
-    pass: "AwesomePass"
+    "name": "AwesomeUser",
+    "pass": "AwesomePass"
 }
 Response: 200 OK
 {
-    name: "AwesomeUser",
-    pass: "AwesomePass"
+    "name": "AwesomeUser",
+    "pass": "AwesomePass"
 }
 
 ```
 
 ### **GET** Product List metod call example:
+>GET [YOUR_SERVER_ADDRESS:1881/productList]
 ```JSON
-[YOUR_SERVER_ADDRESS:1881/productList]
 Request:
 {} //empty request
 Response: 200 OK
@@ -72,8 +72,8 @@ Response: 200 OK
 ```
 
 ### **POST** Product metod call example:
+>POST [YOUR_SERVER_ADDRESS:1881/product]
 ```JSON
-[YOUR_SERVER_ADDRESS:1881/product]
 Request:
 {
     "name":"Milk"
@@ -87,8 +87,8 @@ Response: 200 OK
 ```
 
 ### **GET** Product by ID metod call example:
+>GET [YOUR_SERVER_ADDRESS:1881/product/{id}]
 ```JSON
-[YOUR_SERVER_ADDRESS:1881/product/{id}]
 Request:
 {}
 Response: 200 OK
@@ -99,15 +99,15 @@ Response: 200 OK
 }
 ```
 ### **DELETE** Product by ID metod call example:
+>DELETE [YOUR_SERVER_ADDRESS:1881/product/{id}]
 ```JSON
-[YOUR_SERVER_ADDRESS:1881/product/{id}]
 Request:
 {}
 Response: 200 OK
 ```
 ### **UPDATE[PUT]** Product by ID metod call example:
+>PUT [YOUR_SERVER_ADDRESS:1881/product/{id}]
 ```JSON
-[YOUR_SERVER_ADDRESS:1881/product/{id}]
 Request:
 {}
 Response: 200 OK
