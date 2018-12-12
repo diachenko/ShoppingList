@@ -39,14 +39,14 @@ type User struct {
 
 //Token used for tokens array. TODO: move Users and tokens to mongoDB
 type Token struct {
-	Name  string
-	Token string
+	Name  string `json:"name"`
+	Token string `json:"token"`
 }
 
 //Err used for error handling in http requests
 type Err struct {
-	Code int
-	Text string
+	Code int `json:"code"`
+	Text string `json:"text"`
 }
 
 var products []Product
