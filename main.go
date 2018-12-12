@@ -17,7 +17,7 @@ import (
 	bolt "github.com/boltdb/bolt"
 )
 
-//DBase type used for storing BoltDB
+//DBase type used for storing BoltDB instance
 type DBase struct {
 	DB       *bolt.DB
 	Settings map[string]string
@@ -55,8 +55,6 @@ var auth DBase
 
 var tokens map[string]string
 
-//var CurrBucket string
-
 // Logger method for anything
 func Logger(msg string, file string) {
 	f, _ := os.OpenFile(file, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
@@ -79,7 +77,7 @@ func GetProductListEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 	bucketName := tokens[auth]
 	var prods []Product
-	dB.DB.View(func(tx *bolt.Tx) error { //TODO: move to separate function
+	dB.DB.View(func(tx *bolt.Tx) error { 
 		b := tx.Bucket([]byte(bucketName))
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
@@ -119,7 +117,7 @@ func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 	pr.ID = GenerateGUID()
 	pr.DateAdded = time.Now()
-	dB.DB.Update(func(tx *bolt.Tx) error { //TODO: move to separate function
+	dB.DB.Update(func(tx *bolt.Tx) error { 
 		prods, _ := tx.CreateBucketIfNotExists([]byte(bucketName))
 		temp, err := json.Marshal(pr)
 		if err != nil {
@@ -164,7 +162,7 @@ func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	bucketName := tokens[auth]
-	dB.DB.View(func(tx *bolt.Tx) error { //TODO: move to separate function
+	dB.DB.View(func(tx *bolt.Tx) error {
 		b, _ := tx.CreateBucketIfNotExists([]byte(bucketName))
 		resp := b.Get([]byte(params["id"]))
 		json.NewEncoder(w).Encode(string(resp))
