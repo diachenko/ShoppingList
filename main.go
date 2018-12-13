@@ -12,7 +12,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/gorilla/mux" 
+	"github.com/gorilla/mux"
 
 	bolt "github.com/boltdb/bolt"
 )
@@ -25,9 +25,9 @@ type DBase struct {
 
 // Product struct used for storing product data
 type Product struct {
-	ID       string `json:"id,omitempty"`
-	Name     string `json:"name"`
-	IsBought bool   `json:"isBought"`
+	ID        string    `json:"id,omitempty"`
+	Name      string    `json:"name"`
+	IsBought  bool      `json:"isBought"`
 	DateAdded time.Time `json:"dateAdded"`
 }
 
@@ -45,7 +45,7 @@ type Token struct {
 
 //Err used for error handling in http requests
 type Err struct {
-	Code int `json:"code"`
+	Code int    `json:"code"`
 	Text string `json:"text"`
 }
 
@@ -77,7 +77,7 @@ func GetProductListEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 	bucketName := tokens[auth]
 	var prods []Product
-	dB.DB.View(func(tx *bolt.Tx) error { 
+	dB.DB.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte(bucketName))
 		c := b.Cursor()
 		for k, v := c.First(); k != nil; k, v = c.Next() {
@@ -99,7 +99,7 @@ func GenerateGUID() string {
 
 // AddProductEndpoint used for creating new product in db
 func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	var pr Product 
+	var pr Product
 	auth := req.Header.Get("auth")
 	if auth == "" {
 		var err Err
@@ -117,7 +117,7 @@ func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 	}
 	pr.ID = GenerateGUID()
 	pr.DateAdded = time.Now()
-	dB.DB.Update(func(tx *bolt.Tx) error { 
+	dB.DB.Update(func(tx *bolt.Tx) error {
 		prods, _ := tx.CreateBucketIfNotExists([]byte(bucketName))
 		temp, err := json.Marshal(pr)
 		if err != nil {
@@ -131,7 +131,7 @@ func AddProductEndpoint(w http.ResponseWriter, req *http.Request) {
 
 // DeleteProductEndpoint used for deleting old product by ID
 func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	params := mux.Vars(req) 
+	params := mux.Vars(req)
 	auth := req.Header.Get("auth")
 	if auth == "" {
 		var err Err
@@ -151,7 +151,7 @@ func DeleteProductEndpoint(w http.ResponseWriter, req *http.Request) {
 
 // GetProductEndpoint get certain product by ID
 func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	params := mux.Vars(req) 
+	params := mux.Vars(req)
 	auth := req.Header.Get("auth")
 	if auth == "" {
 		var err Err
@@ -172,7 +172,7 @@ func GetProductEndpoint(w http.ResponseWriter, req *http.Request) {
 
 // ToggleProductEndpoint change product status by ID.
 func ToggleProductEndpoint(w http.ResponseWriter, req *http.Request) {
-	params := mux.Vars(req) 
+	params := mux.Vars(req)
 	auth := req.Header.Get("auth")
 	if auth == "" {
 		var err Err
