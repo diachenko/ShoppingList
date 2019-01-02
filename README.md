@@ -3,7 +3,7 @@
 BE Side of the simple Shopping List app. 
 
 
-##Endpoint list
+## Endpoint list
 > All calls except **signin** and **signup** should contain "auth" parameter in header. 
 > "auth" value received in **signin** call response
 ### **POST** Sign in metod call example: 
