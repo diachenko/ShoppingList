@@ -34,7 +34,11 @@ export class LoginComponent implements OnInit {
     login() {
         this.userService.login(this.user)
             .subscribe(
-                () => this.router.navigate(["/list"]),
+                (response) => {
+                    localStorage.setItem("TOKEN", response.token)
+                    console.log(response);
+                    this.router.navigate(["/list"])
+                },
                 (error) => alert("Unfortunately we could not find your account.")
             );
     }
