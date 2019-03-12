@@ -1,13 +1,16 @@
 # ShoppingList
 
-BE Side of the simple Shopping List app. 
-
+BE Side of the simple Shopping List app.
 
 ## Endpoint list
-> All calls except **signin** and **signup** should contain "auth" parameter in header. 
+
+> All calls except **signin** and **signup** should contain "auth" parameter in header.
 > "auth" value received in **signin** call response
-### **POST** Sign in metod call example: 
+
+### **POST** Sign in metod call example
+
 >POST [YOUR_SERVER_ADDRESS:1881/signin]
+
 ```JSON
 Request:
 {
@@ -20,8 +23,11 @@ Response: 200 OK
     "Token": "F2D052C796A264A666EE76B5350EB7BE"
 }
 ```
-### **POST** Sign up metod call example:
+
+### **POST** Sign up metod call example
+
 >POST [YOUR_SERVER_ADDRESS:1881/signup]
+
 ```JSON
 Request:
 {
@@ -36,8 +42,10 @@ Response: 200 OK
 
 ```
 
-### **GET** Product List metod call example:
+### **GET** Product List metod call example
+
 >GET [YOUR_SERVER_ADDRESS:1881/productList]
+
 ```JSON
 Request:
 {} //empty request
@@ -71,8 +79,10 @@ Response: 200 OK
 ]
 ```
 
-### **POST** Product metod call example:
+### **POST** Product metod call example
+
 >POST [YOUR_SERVER_ADDRESS:1881/product]
+
 ```JSON
 Request:
 {
@@ -86,8 +96,10 @@ Response: 200 OK
 }
 ```
 
-### **GET** Product by ID metod call example:
+### **GET** Product by ID metod call example
+
 >GET [YOUR_SERVER_ADDRESS:1881/product/{id}]
+
 ```JSON
 Request:
 {}
@@ -98,15 +110,21 @@ Response: 200 OK
     "isBought":false
 }
 ```
-### **DELETE** Product by ID metod call example:
+
+### **DELETE** Product by ID metod call example
+
 >DELETE [YOUR_SERVER_ADDRESS:1881/product/{id}]
+
 ```JSON
 Request:
 {}
 Response: 200 OK
 ```
-### **UPDATE[PUT]** Product by ID metod call example:
+
+### **UPDATE[PUT]** Product by ID metod call example
+
 >PUT [YOUR_SERVER_ADDRESS:1881/product/{id}]
+
 ```JSON
 Request:
 {}
